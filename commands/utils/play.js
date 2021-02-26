@@ -12,8 +12,8 @@ module.exports = {
         if(!voiceChannel) return message.channel.send('You need to be in a channel to execute this command!');
         
         const permissions = voiceChannel.permissionsFor(message.client.user);
-        if(!permission.has('CONNECT')) return message.channel.send('You dont have the correct permissions');
-        if(!permission.has('SPEAK')) return message.channel.send('You dont have the correct permissions');
+        if(!permissions.has('CONNECT')) return message.channel.send('You dont have the correct permissions');
+        if(!permissions.has('SPEAK')) return message.channel.send('You dont have the correct permissions');
 
         const connection = await voiceChannel.join();
 
