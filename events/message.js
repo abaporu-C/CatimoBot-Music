@@ -18,7 +18,7 @@ module.exports = {
                 reply += `\nThe proper usage would be: \`${prefix}${command.name} ${command.usage}\``;
             }
 
-            return message.channel.send(`You didn't provide any arguments, ${message.author}!`);
+            return message.channel.send(`${reply}, ${message.author}!`);
         }
 
         try {
