@@ -1,0 +1,14 @@
+{
+  "name": "catimobot-music",
+  "version": "1.0.0",
+  "description": "Music discord bot",
+  "main": "main.js",
+  "scripts": {
+    "test": "try"
+  },
+  "author": "vinicius de souza",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^12.5.1"
+  }
+}
