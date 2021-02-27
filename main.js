@@ -1,9 +1,9 @@
 //Utilities
 const Discord = require('discord.js');
 const client = new Discord.Client();
+require('dotenv').config();
 const fs = require('fs');
 const eventFiles = fs.readdirSync('./events').filter(file => file.endsWith('.js'));
-const {prefix, token} = require('./config.json');
 client.commands = new Discord.Collection();
 const commandFolders = fs.readdirSync('./commands');
 const commandFiles = fs.readdirSync('./commands/').filter(file => file.endsWith('.js'));
@@ -27,4 +27,4 @@ for (const folder of commandFolders) {
 }
 
 
-client.login(token);
+client.login(process.env.DISCORD_TOKEN);
