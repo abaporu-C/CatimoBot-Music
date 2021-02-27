@@ -9,7 +9,7 @@ module.exports = {
     aliases: ['skip', 'stop'], //We are using aliases to run the skip and stop command follow this tutorial if lost: https://www.youtube.com/watch?v=QBUJ3cdofqc
     cooldown: 0,
     description: 'Advanced music bot',
-    async execute(message,args, cmd, client, Discord){
+    async execute(message, args, cmd, client){
 
 
         //Checking for the voicechannel and permissions (you can add more permissions if you like).
@@ -76,7 +76,10 @@ module.exports = {
             }
         }
 
-        else if(cmd === 'skip') skip_song(message, server_queue);
+        else if(cmd === 'skip'){
+            skip_song(message, server_queue)
+            console.log('skip');
+        }
         else if(cmd === 'stop') stop_song(message, server_queue);
     }
     
@@ -91,8 +94,8 @@ const video_player = async (guild, song) => {
         queue.delete(guild.id);
         return;
     }
-    const stream = ytdl(song.url, { filter: 'audioonly' });
-    song_queue.connection.play(stream, { seek: 0, volume: 0.5 })
+    const stream = await ytdl(song.url);
+    song_queue.connection.play(stream, { seek: 0, volume: 0.5, type: 'opus' })
     .on('finish', () => {
         song_queue.songs.shift();
         video_player(guild, song_queue.songs[0]);
