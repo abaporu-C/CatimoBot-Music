@@ -5,7 +5,7 @@ const queue = new Map();
 
 module.exports = {
     name: 'play',
-    aliases: ['skip', 'stop'], 
+    aliases: ['skip', 'stop', 'list'], 
     cooldown: 0,
     description: 'Advanced music bot',
     async execute(message, args, cmd, client){
@@ -78,7 +78,12 @@ module.exports = {
         else if(cmd === 'skip'){
             skip_song(message, server_queue)
         }
-        else if(cmd === 'stop') stop_song(message, server_queue);
+        else if(cmd === 'stop') {
+            stop_song(message, server_queue);
+        }
+        else if(cmd === 'list') {
+            list_queue(message, server_queue);
+        }
     }
     
 }
@@ -113,4 +118,16 @@ const stop_song = (message, server_queue) => {
     if (!message.member.voice.channel) return message.channel.send('You need to be in a channel to execute this command!');
     server_queue.songs = [];
     server_queue.connection.dispatcher.end();
+}
+
+const list_queue = (message, server_queue) => {
+    if(server_queue){
+        let songList = "The song list is:\n";
+        for(let i = 0; i < server_queue.songs.length; i++){
+            songList += `${(i + 1)} - ${server_queue.songs[i].title}\n`; 
+        }
+        message.channel.send(songList);
+    } else{
+        message.channel.send("There is no queue yet! Use the <^play> command to add one song to the song queue!")
+    }
 }
