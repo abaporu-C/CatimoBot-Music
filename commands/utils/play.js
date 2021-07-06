@@ -212,18 +212,24 @@ const loop_song = (message, args, server_queue) => {
 
 const pause_queue = (message, server_queue) => {
     if(!server_queue.connection) message.channel.send('There is no music playing right now!');
-    if(!message.member.voice.channel) message.channel.send('You have to be in a voice channel to execute this command.')
-    else{
+    else if(!message.member.voice.channel) message.channel.send('You have to be in a voice channel to execute this command.')
+    else if(!server_queue.playing) message.channel.send('The music is already paused.')
+    else{        
         server_queue.connection.dispatcher.pause();
+        server_queue.playing = false;
+        console.log(server_queue)
         message.channel.send('The music was paused!');
     }
 }
 
 const resume_queue = (message, server_queue) => {
     if(!server_queue.connection) message.channel.send('There is no music playing right now!');
-    if(!message.member.voice.channel) message.channel.send('You have to be in a voice channel to execute this command.')
+    else if(!message.member.voice.channel) message.channel.send('You have to be in a voice channel to execute this command.')
+    else if(server_queue.playing) message.channel.send('The music is already playing.')
     else{
         server_queue.connection.dispatcher.resume();
+        server_queue.playing = true;
+        console.log(server_queue);
         message.channel.send('The music will continue now!');
     }
 }
