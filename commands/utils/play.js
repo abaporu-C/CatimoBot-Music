@@ -5,7 +5,7 @@ const queue = new Map();
 
 module.exports = {
     name: 'play',
-    aliases: ['skip', 'stop', 'list', 'drop'], 
+    aliases: ['skip', 'stop', 'list', 'drop', 'loop', 'pause', 'resume'], 
     cooldown: 0,
     description: 'Advanced music bot',
     async execute(message, args, cmd, client){
@@ -52,7 +52,10 @@ module.exports = {
                     voice_channel: voice_channel,
                     text_channel: message.channel,
                     connection: null,
-                    songs: []
+                    songs: [],
+                    playing: true,
+                    loopall: false,
+                    loopone: false
                 }
                 
                 //Add our key and value pair into the global queue. We then use this to get our server queue.
@@ -87,6 +90,15 @@ module.exports = {
         else if(cmd === 'drop') {
             drop_song(message, args, server_queue)
         }
+        else if(cmd === 'loop') {
+            loop_song(message, args, server_queue);
+        }
+        else if(cmd === 'resume') {
+            resume_queue(message, server_queue);
+        }
+        else if(cmd === 'pause') {
+            pause_queue(message, server_queue);
+        }
     }
     
 }
@@ -103,8 +115,17 @@ const video_player = async (guild, song) => {
     const stream = await ytdl(song.url);
     song_queue.connection.play(stream, { seek: 0, volume: 0.5, type: 'opus' })
     .on('finish', () => {
-        song_queue.songs.shift();
-        video_player(guild, song_queue.songs[0]);
+        if(song_queue.loopone){
+            video_player(guild, song_queue.songs[0]);
+        }
+        else if (song_queue.loopall){
+            song_queue.songs.push(song_queue.songs[0])
+            song_queue.songs.shift(song_queue.songs[0]);
+        }
+        else{
+            song_queue.songs.shift();
+        }
+        video_player(guild, song_queue.songs[0])        
     });
     await song_queue.text_channel.send(`🎶 Now playing **${song.title}**`)
 }
@@ -152,5 +173,57 @@ const drop_song = (message, args, server_queue) => {
             }
         }
         server_queue.songs = newQueue;
+    }
+}
+
+const loop_song = (message, args, server_queue) => {
+    if(!server_queue.connection) message.channel.send('There is no music playing!')
+    if(!message.member.voice.channel) message.channel.send('You have to be in a voice channel to execute this command!')
+    else{
+        switch(args[0].toLowerCase()){ 
+            case 'all':
+                server_queue.loopall = !server_queue.loopall;
+                server_queue.loopone = false;
+    
+                if(server_queue.loopall) message.channel.send('Loop all has been turned on!');
+                else message.channel.send('Loop all has been turned off!');
+    
+                break;
+            case 'one':
+                server_queue.loopone = !server_queue.loopone;
+                server_queue.loopall = false;
+                
+                if(server_queue.loopone) message.channel.send('Loop one has been turned on!');
+                else message.chanel.send('Loop one has been turned off!')
+    
+                break;
+            case 'off':
+                server_queue.loopall = false;
+                server_queue.loopone = false;
+                
+                message.channel.send('Loop function turned off!');
+    
+                break;
+            default:
+                message.channel.send('Specify which kind of loop you want to switch.')
+        }
+    }
+}
+
+const pause_queue = (message, server_queue) => {
+    if(!server_queue.connection) message.channel.send('There is no music playing right now!');
+    if(!message.member.voice.channel) message.channel.send('You have to be in a voice channel to execute this command.')
+    else{
+        server_queue.connection.dispatcher.pause();
+        message.channel.send('The music was paused!');
+    }
+}
+
+const resume_queue = (message, server_queue) => {
+    if(!server_queue.connection) message.channel.send('There is no music playing right now!');
+    if(!message.member.voice.channel) message.channel.send('You have to be in a voice channel to execute this command.')
+    else{
+        server_queue.connection.dispatcher.resume();
+        message.channel.send('The music will continue now!');
     }
 }
