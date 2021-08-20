@@ -1,6 +1,8 @@
 //Utilities
 const Discord = require('discord.js');
-const client = new Discord.Client();
+const client = new Discord.Client({
+	intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES]
+});
 require('dotenv').config();
 const fs = require('fs');
 const eventFiles = fs.readdirSync('./events').filter(file => file.endsWith('.js'));
