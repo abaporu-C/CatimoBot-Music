@@ -11,11 +11,13 @@ module.exports =  (message, args, server_queue) => {
         skip_song(message, server_queue);
     } else {
         newQueue = [];
-        for(let i = 0; i < server_queue.songs.length; i++){
+        /*for(let i = 0; i < server_queue.songs.length; i++){
             if(parseInt(args[0]) - 1 != i) {
                 newQueue.push(server_queue.songs[i])
-            }
-        }
+            }                
+        }*/
+        //creates a new song queue without the song dropped.
+        for(let song of server_queue.songs) if(parseInt(aargs[0]) - 1 != server_queue.songs.findIndex(song)) newQueue.push(song)
         server_queue.songs = newQueue;
     }
 }

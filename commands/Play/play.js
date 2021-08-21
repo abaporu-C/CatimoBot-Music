@@ -6,6 +6,7 @@ const list_queue = require('./aliases/list.js');
 const drop_song = require('./aliases/drop.js');
 const resume_queue = require('./aliases/resume.js');
 const loop_song = require('./aliases/loop');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBehavior } = require('@discordjs/voice');
 
 const pause_queue = require('./aliases/pause.js');
 
@@ -20,14 +21,14 @@ module.exports = {
 
 
         //Checking for the voicechannel and permissions.
-        const voice_channel = message.member.voice.channel;
+        const voice_channel = message.member.voice.channel;        
         if (!voice_channel) return message.channel.send('You need to be in a channel to execute this command!');
         const permissions = voice_channel.permissionsFor(message.client.user);
         if (!permissions.has('CONNECT')) return message.channel.send('You dont have the correct permissions');
         if (!permissions.has('SPEAK')) return message.channel.send('You dont have the correct permissions');
 
         //This is our server queue. We are getting this server queue from the global queue.
-        const server_queue = queue.get(message.guild.id);
+        let server_queue = queue.get(message.guild.id);
 
         //If the user has used the play command
         if (cmd === 'play'){
@@ -60,6 +61,7 @@ module.exports = {
                     voice_channel: voice_channel,
                     text_channel: message.channel,
                     connection: null,
+                    audio_player: null,
                     songs: [],
                     playing: true,
                     loopall: false,
@@ -67,16 +69,22 @@ module.exports = {
                 }
                 
                 //Add our key and value pair into the global queue. We then use this to get our server queue.
-                queue.set(message.guild.id, queue_constructor);
+                queue.set(message.guild.id, queue_constructor);            
+
                 queue_constructor.songs.push(song);
     
-                //Establish a connection and play the song with the vide_player function.
+                //Establish a connection and play the song with the video_player function.
                 try {
-                    const connection = await voice_channel.join();
+                    const connection = await joinVoiceChannel({
+                        channelId: voice_channel.id,
+                        guildId: voice_channel.guild.id,
+                        adapterCreator: voice_channel.guild.voiceAdapterCreator,
+                    });
                     queue_constructor.connection = connection;
                     video_player(message.guild, queue_constructor.songs[0]);
                 } catch (err) {
                     queue.delete(message.guild.id);
+                    server_queue = undefined;
                     message.channel.send('There was an error connecting!');
                     throw err;
                 }
@@ -120,8 +128,24 @@ const video_player = async (guild, song) => {
         queue.delete(guild.id);
         return;
     }
+
+    //audio stream
     const stream = await ytdl(song.url);
-    song_queue.connection.play(stream, { seek: 0, volume: 0.5, type: 'opus' })
+
+    //audio player creation
+    song_queue.audio_player = createAudioPlayer({
+        behaviors:{
+            noSubscriber: NoSubscriberBehavior.Pause
+        }
+    });
+
+    song_queue.connection.subscribe(song_queue.audio_player)
+
+    //creating audio resrouce
+    const resource = createAudioResource(stream);  
+        
+    //playing the audio resource
+    song_queue.audio_player.play(resource)
     .on('finish', () => {
         if(song_queue.loopone){
             video_player(guild, song_queue.songs[0]);

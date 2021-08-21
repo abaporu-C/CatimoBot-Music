@@ -1,5 +1,5 @@
 module.exports = {
-	name: 'message',
+	name: 'messageCreate',
 	execute(message, client) {
         const {prefix} = require('../config.json');
 		if (message.member.user.bot || !message.content.startsWith(prefix)) return;
