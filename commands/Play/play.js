@@ -5,10 +5,9 @@ const stop_song = require('./aliases/stop.js');
 const list_queue = require('./aliases/list.js');
 const drop_song = require('./aliases/drop.js');
 const resume_queue = require('./aliases/resume.js');
-const loop_song = require('./aliases/loop');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBehavior } = require('@discordjs/voice');
-
 const pause_queue = require('./aliases/pause.js');
+const loop_song = require('./aliases/loop');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBehavior, StreamType } = require('@discordjs/voice');
 
 const queue = new Map();
 
@@ -70,7 +69,6 @@ module.exports = {
                 
                 //Add our key and value pair into the global queue. We then use this to get our server queue.
                 queue.set(message.guild.id, queue_constructor);            
-
                 queue_constructor.songs.push(song);
     
                 //Establish a connection and play the song with the video_player function.
@@ -139,25 +137,22 @@ const video_player = async (guild, song) => {
         }
     });
 
+    //error handling
+    song_queue.audio_player.on('error', (err) => song_queue.text_channel.send(`Error: ${err.message} with track ${err.resource.metadata.title}`))
+
     song_queue.connection.subscribe(song_queue.audio_player)
 
     //creating audio resrouce
-    const resource = createAudioResource(stream);  
+    const resource = createAudioResource(stream, {
+        inputType: StreamType.WebmOpus,
+        metadata: {
+            title: song.title
+        }
+    });
         
     //playing the audio resource
     song_queue.audio_player.play(resource)
-    .on('finish', () => {
-        if(song_queue.loopone){
-            video_player(guild, song_queue.songs[0]);
-        }
-        else if (song_queue.loopall){
-            song_queue.songs.push(song_queue.songs[0])
-            song_queue.songs.shift(song_queue.songs[0]);
-        }
-        else{
-            song_queue.songs.shift();
-        }
-        video_player(guild, song_queue.songs[0])        
-    });
+    song_queue.connection.subscribe(song_queue.audio_player) 
+    
     await song_queue.text_channel.send(`🎶 Now playing **${song.title}**`)
 }
