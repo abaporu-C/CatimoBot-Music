@@ -1,7 +1,7 @@
 //Utilities
 const Discord = require('discord.js');
 const client = new Discord.Client({
-	intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES]
+	intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES, Discord.Intents.FLAGS.GUILD_WEBHOOKS, Discord.Intents.FLAGS.GUILD_MEMBERS, Discord.Intents.FLAGS.GUILD_PRESENCES]
 });
 require('dotenv').config();
 const fs = require('fs');

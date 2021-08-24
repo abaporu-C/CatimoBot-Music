@@ -20,7 +20,8 @@ module.exports = {
 
 
         //Checking for the voicechannel and permissions.
-        const voice_channel = message.member.voice.channel;        
+        const voice_channel = message.member.voice.channel;
+        console.log(message);        
         if (!voice_channel) return message.channel.send('You need to be in a channel to execute this command!');
         const permissions = voice_channel.permissionsFor(message.client.user);
         if (!permissions.has('CONNECT')) return message.channel.send('You dont have the correct permissions');
@@ -131,28 +132,36 @@ const video_player = async (guild, song) => {
     const stream = await ytdl(song.url);
 
     //audio player creation
-    song_queue.audio_player = createAudioPlayer({
+    const audio_player = await createAudioPlayer({
         behaviors:{
             noSubscriber: NoSubscriberBehavior.Pause
         }
     });
 
-    //error handling
-    song_queue.audio_player.on('error', (err) => song_queue.text_channel.send(`Error: ${err.message} with track ${err.resource.metadata.title}`))
 
-    song_queue.connection.subscribe(song_queue.audio_player)
+
+    //error handling
+    audio_player.on('error', (err) => console.error(err))
+
+    song_queue.audio_player = await audio_player;
+
+    await song_queue.connection.subscribe(song_queue.audio_player)
 
     //creating audio resrouce
-    const resource = createAudioResource(stream, {
+    const resource = await createAudioResource(stream, {
         inputType: StreamType.WebmOpus,
         metadata: {
             title: song.title
         }
     });
+
+    console.log(resource)
         
     //playing the audio resource
-    song_queue.audio_player.play(resource)
-    song_queue.connection.subscribe(song_queue.audio_player) 
+    await song_queue.audio_player.play(resource)
+
+    console.log(await audio_player)
+    await song_queue.connection.subscribe(song_queue.audio_player) 
     
     await song_queue.text_channel.send(`🎶 Now playing **${song.title}**`)
 }
