@@ -20,8 +20,9 @@ module.exports = {
 
 
         //Checking for the voicechannel and permissions.
-        const voice_channel = message.member.voice.channel;
-        if (!voice_channel) return message.channel.send('You need to be in a channel to execute this command!');
+        const voice_channel = await message.member.voice.channel;
+        console.log(await message.member);
+        if (await !voice_channel) return message.channel.send('You need to be in a channel to execute this command!');
         const permissions = voice_channel.permissionsFor(message.client.user);
         if (!permissions.has('CONNECT')) return message.channel.send('You dont have the correct permissions');
         if (!permissions.has('SPEAK')) return message.channel.send('You dont have the correct permissions');
@@ -121,6 +122,7 @@ const video_player = async (guild, song) => {
         return;
     }
     const stream = await ytdl(song.url);
+    
     song_queue.connection.play(stream, { seek: 0, volume: 0.5, type: 'opus' })
     .on('finish', () => {
         if(song_queue.loopone){
@@ -134,6 +136,12 @@ const video_player = async (guild, song) => {
             song_queue.songs.shift();
         }
         video_player(guild, song_queue.songs[0])        
-    });
+    }).on('error', (err)=>{
+        song_queue.connection.dispatcher.destroy();
+        song_queue.connection.disconnect();
+        server_queue.voice_channel.leave();
+        queue.delete(guild.id);
+        console.error(err);        
+    })
     await song_queue.text_channel.send(`🎶 Now playing **${song.title}**`)
 }
