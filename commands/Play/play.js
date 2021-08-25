@@ -1,4 +1,4 @@
-const ytdl = require('ytdl-core-discord');
+const ytdl = require('discord-ytdl-core');
 const ytSearch = require('yt-search');
 const skip_song = require('./aliases/skip.js');
 const stop_song = require('./aliases/stop.js');
@@ -20,8 +20,7 @@ module.exports = {
 
 
         //Checking for the voicechannel and permissions.
-        const voice_channel = message.member.voice.channel;
-        console.log(message);        
+        const voice_channel = message.member.voice.channel;        
         if (!voice_channel) return message.channel.send('You need to be in a channel to execute this command!');
         const permissions = voice_channel.permissionsFor(message.client.user);
         if (!permissions.has('CONNECT')) return message.channel.send('You dont have the correct permissions');
@@ -129,7 +128,10 @@ const video_player = async (guild, song) => {
     }
 
     //audio stream
-    const stream = await ytdl(song.url);
+    const stream = await ytdl(song.url, {
+        filter: "audioonly",
+        fmt: "ebml",
+    });
 
     //audio player creation
     const audio_player = await createAudioPlayer({
@@ -138,7 +140,7 @@ const video_player = async (guild, song) => {
         }
     });
 
-
+    console.log(await stream)
 
     //error handling
     audio_player.on('error', (err) => console.error(err))
@@ -153,15 +155,12 @@ const video_player = async (guild, song) => {
         metadata: {
             title: song.title
         }
-    });
-
-    console.log(resource)
+    });    
         
     //playing the audio resource
-    await song_queue.audio_player.play(resource)
+    await song_queue.audio_player.play(await resource)
 
-    console.log(await audio_player)
-    await song_queue.connection.subscribe(song_queue.audio_player) 
+    await song_queue.connection.subscribe(await song_queue.audio_player) 
     
     await song_queue.text_channel.send(`🎶 Now playing **${song.title}**`)
 }

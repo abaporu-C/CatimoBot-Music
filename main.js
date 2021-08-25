@@ -1,7 +1,7 @@
 //Utilities
 const Discord = require('discord.js');
 const client = new Discord.Client({
-	intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES, Discord.Intents.FLAGS.GUILD_WEBHOOKS, Discord.Intents.FLAGS.GUILD_MEMBERS, Discord.Intents.FLAGS.GUILD_PRESENCES]
+	intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES, Discord.Intents.FLAGS.GUILD_WEBHOOKS, Discord.Intents.FLAGS.GUILD_MEMBERS, Discord.Intents.FLAGS.GUILD_PRESENCES, Discord.Intents.FLAGS.GUILD_VOICE_STATES]
 });
 require('dotenv').config();
 const fs = require('fs');
@@ -9,7 +9,6 @@ const eventFiles = fs.readdirSync('./events').filter(file => file.endsWith('.js'
 client.commands = new Discord.Collection();
 const commandFolders = fs.readdirSync('./commands');
 const commandFiles = fs.readdirSync('./commands/').filter(file => file.endsWith('.js'));
-
 
 for (const file of eventFiles) {
 	const event = require(`./events/${file}`);
