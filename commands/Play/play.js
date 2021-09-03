@@ -138,6 +138,7 @@ const video_player = async (guild, song) => {
     //error handling
     audio_player.on('error', async (err) => {
         console.error(err)
+        console.log(song_queue)
         await song_queue.text_channel.send(`There was a connection error and the stream was interrupted.`)
         if(song_queue.connection) song_queue.connection.destroy();
         queue.delete(guild.id);
