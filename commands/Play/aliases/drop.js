@@ -11,11 +11,14 @@ module.exports =  (message, args, server_queue) => {
         skip_song(message, server_queue);
     } else {
         newQueue = [];
+
+        //creates a new song queue without the song dropped.
         for(let i = 0; i < server_queue.songs.length; i++){
             if(parseInt(args[0]) - 1 != i) {
                 newQueue.push(server_queue.songs[i])
-            }
+            }                
         }
+                
         server_queue.songs = newQueue;
     }
 }

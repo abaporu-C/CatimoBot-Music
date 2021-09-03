@@ -1,13 +1,13 @@
-const ytdl = require('ytdl-core-discord');
+const ytdl = require('ytdl-core');
 const ytSearch = require('yt-search');
 const skip_song = require('./aliases/skip.js');
 const stop_song = require('./aliases/stop.js');
 const list_queue = require('./aliases/list.js');
 const drop_song = require('./aliases/drop.js');
 const resume_queue = require('./aliases/resume.js');
-const loop_song = require('./aliases/loop');
-
 const pause_queue = require('./aliases/pause.js');
+const loop_song = require('./aliases/loop');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBehavior, StreamType, AudioPlayerStatus } = require('@discordjs/voice');
 
 const queue = new Map();
 
@@ -20,15 +20,14 @@ module.exports = {
 
 
         //Checking for the voicechannel and permissions.
-        const voice_channel = await message.member.voice.channel;
-        console.log(await message.member);
-        if (await !voice_channel) return message.channel.send('You need to be in a channel to execute this command!');
+        const voice_channel = message.member.voice.channel;        
+        if (!voice_channel) return message.channel.send('You need to be in a channel to execute this command!');
         const permissions = voice_channel.permissionsFor(message.client.user);
         if (!permissions.has('CONNECT')) return message.channel.send('You dont have the correct permissions');
         if (!permissions.has('SPEAK')) return message.channel.send('You dont have the correct permissions');
 
         //This is our server queue. We are getting this server queue from the global queue.
-        const server_queue = queue.get(message.guild.id);
+        let server_queue = queue.get(message.guild.id);
 
         //If the user has used the play command
         if (cmd === 'play'){
@@ -61,6 +60,7 @@ module.exports = {
                     voice_channel: voice_channel,
                     text_channel: message.channel,
                     connection: null,
+                    audio_player: null,
                     songs: [],
                     playing: true,
                     loopall: false,
@@ -68,16 +68,21 @@ module.exports = {
                 }
                 
                 //Add our key and value pair into the global queue. We then use this to get our server queue.
-                queue.set(message.guild.id, queue_constructor);
+                queue.set(message.guild.id, queue_constructor);            
                 queue_constructor.songs.push(song);
     
-                //Establish a connection and play the song with the vide_player function.
+                //Establish a connection and play the song with the video_player function.
                 try {
-                    const connection = await voice_channel.join();
+                    const connection = await joinVoiceChannel({
+                        channelId: voice_channel.id,
+                        guildId: voice_channel.guild.id,
+                        adapterCreator: voice_channel.guild.voiceAdapterCreator,
+                    });
                     queue_constructor.connection = connection;
                     video_player(message.guild, queue_constructor.songs[0]);
                 } catch (err) {
                     queue.delete(message.guild.id);
+                    server_queue = undefined;
                     message.channel.send('There was an error connecting!');
                     throw err;
                 }
@@ -91,7 +96,7 @@ module.exports = {
             skip_song(message, server_queue)
         }
         else if(cmd === 'stop') {
-            stop_song(message, server_queue);
+            stop_song(message, server_queue, queue, message.guild.id);
         }
         else if(cmd === 'list') {
             list_queue(message, server_queue);
@@ -115,33 +120,76 @@ module.exports = {
 const video_player = async (guild, song) => {
     const song_queue = queue.get(guild.id);
 
-    //If no song is left in the server queue. Leave the voice channel and delete the key and value pair from the global queue.
-    if (!song) {
-        song_queue.voice_channel.leave();
-        queue.delete(guild.id);
-        return;
-    }
-    const stream = await ytdl(song.url);
     
-    song_queue.connection.play(stream, { seek: 0, volume: 0.5, type: 'opus' })
-    .on('finish', () => {
-        if(song_queue.loopone){
-            video_player(guild, song_queue.songs[0]);
+
+    //audio stream
+    const stream = await ytdl(song.url, {
+        filter: "audioonly",
+        fmt: "ebml",
+    });
+
+    //audio player creation
+    const audio_player = await createAudioPlayer({
+        behaviors:{
+            noSubscriber: NoSubscriberBehavior.Pause
         }
-        else if (song_queue.loopall){
-            song_queue.songs.push(song_queue.songs[0])
-            song_queue.songs.shift(song_queue.songs[0]);
-        }
-        else{
-            song_queue.songs.shift();
-        }
-        video_player(guild, song_queue.songs[0])        
-    }).on('error', (err)=>{
-        song_queue.connection.dispatcher.destroy();
-        song_queue.connection.disconnect();
-        server_queue.voice_channel.leave();
+    });
+
+    //error handling
+    audio_player.on('error', async (err) => {
+        console.error(err)
+        await song_queue.text_channel.send(`There was a connection error and the stream was interrupted.`)
+        song_queue.connection.destroy();
         queue.delete(guild.id);
-        console.error(err);        
     })
+
+    audio_player.on(AudioPlayerStatus.Idle, async () => {
+                
+        
+        if (song_queue.loopall){
+            song_queue.songs.push(song_queue.songs[0])
+            song_queue.songs.shift(song_queue.songs[0])
+        }
+        else if(!song_queue.loopone) song_queue.songs.shift(song_queue.songs[0])
+
+        //If no song is left in the server queue. Leave the voice channel and delete the key and value pair from the global queue.
+        if (!song_queue.songs[0]) {            
+            song_queue.connection.destroy();
+            queue.delete(guild.id);
+            return;
+        }
+
+        const newStream = await ytdl(song_queue.songs[0].url, {
+            filter: "audioonly",
+            fmt: "ebml",
+        });
+
+        const newResource = await createAudioResource(newStream, {
+            inputType: StreamType.WebmOpus,
+            metadata: {
+                title: song.title
+            }
+        });
+
+        await song_queue.audio_player.play(newResource)
+        await song_queue.text_channel.send(`🎶 Now playing **${song_queue.songs[0].title}**`)
+    })
+
+    song_queue.audio_player = await audio_player;
+
+    //creating audio resrouce
+    const resource = await createAudioResource(stream, {
+        inputType: StreamType.WebmOpus,
+        metadata: {
+            title: song.title
+        }
+    });    
+        
+    //playing the audio resource
+    
+    await song_queue.connection.subscribe(await song_queue.audio_player) 
+    
+    await song_queue.audio_player.play(await resource)
+
     await song_queue.text_channel.send(`🎶 Now playing **${song.title}**`)
 }
