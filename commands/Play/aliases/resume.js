@@ -3,7 +3,7 @@ module.exports = (message, server_queue) => {
     else if(!message.member.voice.channel) message.channel.send('You have to be in a voice channel to execute this command.')
     else if(server_queue.playing) message.channel.send('The music is already playing.')
     else{
-        server_queue.connection.dispatcher.resume();
+        server_queue.audio_player.unpause();
         server_queue.playing = true;        
         message.channel.send('The music will continue now!');
     }
