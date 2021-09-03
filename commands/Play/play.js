@@ -1,4 +1,4 @@
-const ytdl = require('discord-ytdl-core');
+const ytdl = require('ytdl-core');
 const ytSearch = require('yt-search');
 const skip_song = require('./aliases/skip.js');
 const stop_song = require('./aliases/stop.js');
@@ -7,7 +7,7 @@ const drop_song = require('./aliases/drop.js');
 const resume_queue = require('./aliases/resume.js');
 const pause_queue = require('./aliases/pause.js');
 const loop_song = require('./aliases/loop');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBehavior, StreamType } = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBehavior, StreamType, AudioPlayerStatus } = require('@discordjs/voice');
 
 const queue = new Map();
 
@@ -96,7 +96,7 @@ module.exports = {
             skip_song(message, server_queue)
         }
         else if(cmd === 'stop') {
-            stop_song(message, server_queue);
+            stop_song(message, server_queue, queue, message.guild.id);
         }
         else if(cmd === 'list') {
             list_queue(message, server_queue);
@@ -120,12 +120,7 @@ module.exports = {
 const video_player = async (guild, song) => {
     const song_queue = queue.get(guild.id);
 
-    //If no song is left in the server queue. Leave the voice channel and delete the key and value pair from the global queue.
-    if (!song) {
-        song_queue.voice_channel.leave();
-        queue.delete(guild.id);
-        return;
-    }
+    
 
     //audio stream
     const stream = await ytdl(song.url, {
@@ -140,14 +135,47 @@ const video_player = async (guild, song) => {
         }
     });
 
-    console.log(await stream)
-
     //error handling
-    audio_player.on('error', (err) => console.error(err))
+    audio_player.on('error', async (err) => {
+        console.error(err)
+        await song_queue.text_channel.send(`There was a connection error and the stream was interrupted.`)
+        song_queue.connection.destroy();
+        queue.delete(guild.id);
+    })
+
+    audio_player.on(AudioPlayerStatus.Idle, async () => {
+                
+        
+        if (song_queue.loopall){
+            song_queue.songs.push(song_queue.songs[0])
+            song_queue.songs.shift(song_queue.songs[0])
+        }
+        else if(!song_queue.loopone) song_queue.songs.shift(song_queue.songs[0])
+
+        //If no song is left in the server queue. Leave the voice channel and delete the key and value pair from the global queue.
+        if (!song_queue.songs[0]) {            
+            song_queue.connection.destroy();
+            queue.delete(guild.id);
+            return;
+        }
+
+        const newStream = await ytdl(song_queue.songs[0].url, {
+            filter: "audioonly",
+            fmt: "ebml",
+        });
+
+        const newResource = await createAudioResource(newStream, {
+            inputType: StreamType.WebmOpus,
+            metadata: {
+                title: song.title
+            }
+        });
+
+        await song_queue.audio_player.play(newResource)
+        await song_queue.text_channel.send(`🎶 Now playing **${song_queue.songs[0].title}**`)
+    })
 
     song_queue.audio_player = await audio_player;
-
-    await song_queue.connection.subscribe(song_queue.audio_player)
 
     //creating audio resrouce
     const resource = await createAudioResource(stream, {
@@ -158,9 +186,10 @@ const video_player = async (guild, song) => {
     });    
         
     //playing the audio resource
-    await song_queue.audio_player.play(await resource)
-
+    
     await song_queue.connection.subscribe(await song_queue.audio_player) 
     
+    await song_queue.audio_player.play(await resource)
+
     await song_queue.text_channel.send(`🎶 Now playing **${song.title}**`)
 }
